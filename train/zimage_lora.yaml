@@ -2,8 +2,7 @@
 # ~3x faster than Qwen-Image per step. Use this for the iteration loop
 # (captions, dataset mix, lr), then re-run the winner on Qwen-Image.
 #
-# NOTE: check `ai-toolkit/config/examples/` for the exact `arch` key of the
-# installed version; Z-Image support landed late 2025 and the key has moved.
+# arch "zimage" = ai-toolkit extensions_built_in/diffusion_models/z_image (verified 2026-09-28).
 job: extension
 config:
   name: "cookr_zimage_v1"
@@ -28,6 +27,7 @@ config:
           resolution: [512, 768, 1024]
       train:
         batch_size: 2
+        cache_text_embeddings: true
         steps: 5000
         gradient_accumulation: 1
         train_unet: true
