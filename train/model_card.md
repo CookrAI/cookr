@@ -23,7 +23,7 @@ and memecoin images, is served on cookr.pro.
 
 - Trained on the memes that moved markets: pump.fun coin art that actually traded, plus the internet templates it grew out of
 - Native prompt grammar for coins: character, ticker, format, vibe
-- 9 steps, 1024px, no CFG. A meme in about a second on an L40S
+- 9 steps, 1024px, no CFG. A meme in a few seconds on one 24 GB card
 
 [cookr.pro](https://cookr.pro) · [GitHub](https://github.com/CookrAI/cookr) · [X @CookrPro](https://x.com/CookrPro) · hi@cookr.pro
 
