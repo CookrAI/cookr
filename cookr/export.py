@@ -55,7 +55,7 @@ def main():
             name = base if k == 0 else f"{base}__r{k}"
             os.symlink(src.resolve(), TRAIN / f"{name}.jpg")
             (TRAIN / f"{name}.txt").write_text(r["caption"])
-        if reps > 1:
+        if r["key"].startswith("meme:"):
             n_meme += 1
         else:
             n_coin += 1
