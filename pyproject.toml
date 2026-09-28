@@ -24,6 +24,8 @@ mlx = ["mlx-vlm>=0.1.20"]
 hf = ["torch", "transformers>=4.45", "einops", "timm"]
 # LoRA merge
 merge = ["torch", "diffusers>=0.32", "transformers", "safetensors", "peft"]
+# run the model: from cookr import Cookr
+infer = ["torch", "diffusers>=0.36", "transformers>=4.45", "accelerate", "safetensors", "sentencepiece"]
 
 [tool.setuptools]
 packages = ["cookr"]

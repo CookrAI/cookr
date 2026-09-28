@@ -1,8 +1,9 @@
-"""Publish a trained LoRA (+ samples, config, model card) to the Hub.
-Run on the training box or locally. Token from HF_TOKEN or ./.env.
+"""Publish COOKR to the Hub: merged full model folder (from merge_zimage.py) +
+standalone LoRA + samples + grid + config + model card.
+Run on the training box. Token from HF_TOKEN or ./.env.
 
-  python train/publish_hf.py --run /workspace/output/cookr_zimage_v1 --repo CookrAI/cookr-v1 \
-      --config /workspace/cookr/zimage_lora.yaml --card /workspace/cookr/model_card.md
+  python train/publish_hf.py --run /workspace/output/cookr_zimage_v1 --merged /workspace/cookr-v1-light \
+      --repo CookrAI/cookr-v1-light --config /workspace/cookr/zimage_lora.yaml --card /workspace/cookr/model_card.md
 """
 import argparse
 import os
@@ -27,9 +28,21 @@ def token() -> str:
     return t
 
 
+def grid(paths, out, size=512):
+    from PIL import Image
+    ims = [Image.open(p).convert("RGB") for p in paths]
+    for im in ims:
+        im.thumbnail((size, size))
+    sheet = Image.new("RGB", (size * len(ims), size), (20, 20, 20))
+    for i, im in enumerate(ims):
+        sheet.paste(im, (i * size, 0))
+    sheet.save(out, quality=88)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", required=True, help="ai-toolkit output folder for the job")
+    ap.add_argument("--merged", required=True, help="output folder of merge_zimage.py")
     ap.add_argument("--repo", required=True)
     ap.add_argument("--config", required=True)
     ap.add_argument("--card", required=True, help="README.md for the model card")
@@ -42,20 +55,24 @@ def main():
         sys.exit(f"no final .safetensors in {run}")
     api = HfApi(token=token())
     api.create_repo(a.repo, repo_type="model", exist_ok=True, private=a.private)
-    with tempfile.TemporaryDirectory() as td:
-        stage = pathlib.Path(td)
-        shutil.copy(finals[-1], stage / f"{a.repo.split('/')[-1]}.safetensors")
-        shutil.copy(a.config, stage / "train_config.yaml")
-        shutil.copy(a.card, stage / "README.md")
-        samples = sorted((run / "samples").glob("*.jpg"))
-        # keep the last N samples (latest steps), they are the honest preview
-        (stage / "samples").mkdir()
-        for p in samples[-a.max_samples:]:
-            shutil.copy(p, stage / "samples" / p.name)
-        # the model card widget points at samples/sample_N.jpg: the final-step set
-        for i, p in enumerate(samples[-4:]):
-            shutil.copy(p, stage / "samples" / f"sample_{i}.jpg")
-        api.upload_folder(repo_id=a.repo, folder_path=str(stage), commit_message="cookr v1 lora")
+    merged = pathlib.Path(a.merged)
+    name = a.repo.split("/")[-1]
+    # small files staged next to the merged folder; the big folder uploads in place
+    shutil.copy(finals[-1], merged / f"{name}-lora.safetensors")
+    shutil.copy(a.config, merged / "train_config.yaml")
+    shutil.copy(a.card, merged / "README.md")
+    samples = sorted((run / "samples").glob("*.jpg"))
+    sdir = merged / "samples"
+    if sdir.exists():
+        shutil.rmtree(sdir)
+    sdir.mkdir()
+    for p in samples[-a.max_samples:]:
+        shutil.copy(p, sdir / p.name)
+    for i, p in enumerate(samples[-4:]):  # model card widget targets
+        shutil.copy(p, sdir / f"sample_{i}.jpg")
+    grid(samples[-4:], sdir / "grid.jpg")
+    api.upload_folder(repo_id=a.repo, folder_path=str(merged), commit_message="COOKR v1 light",
+                      ignore_patterns=["*.tmp", "__pycache__"])
     print("published https://huggingface.co/" + a.repo)
 
 

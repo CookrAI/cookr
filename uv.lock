@@ -347,6 +347,14 @@ hf = [
     { name = "torch" },
     { name = "transformers" },
 ]
+infer = [
+    { name = "accelerate" },
+    { name = "diffusers" },
+    { name = "safetensors" },
+    { name = "sentencepiece" },
+    { name = "torch" },
+    { name = "transformers" },
+]
 merge = [
     { name = "diffusers" },
     { name = "peft" },
@@ -360,6 +368,8 @@ mlx = [
 
 [package.metadata]
 requires-dist = [
+    { name = "accelerate", marker = "extra == 'infer'" },
+    { name = "diffusers", marker = "extra == 'infer'", specifier = ">=0.36" },
     { name = "diffusers", marker = "extra == 'merge'", specifier = ">=0.32" },
     { name = "einops", marker = "extra == 'hf'" },
     { name = "httpx", extras = ["http2"], specifier = ">=0.27" },
@@ -367,16 +377,20 @@ requires-dist = [
     { name = "mlx-vlm", marker = "extra == 'mlx'", specifier = ">=0.1.20" },
     { name = "peft", marker = "extra == 'merge'" },
     { name = "pillow", specifier = ">=10" },
+    { name = "safetensors", marker = "extra == 'infer'" },
     { name = "safetensors", marker = "extra == 'merge'" },
+    { name = "sentencepiece", marker = "extra == 'infer'" },
     { name = "timm", marker = "extra == 'hf'" },
     { name = "torch", marker = "extra == 'hf'" },
+    { name = "torch", marker = "extra == 'infer'" },
     { name = "torch", marker = "extra == 'merge'" },
     { name = "tqdm", specifier = ">=4.66" },
     { name = "transformers", marker = "extra == 'hf'", specifier = ">=4.45" },
+    { name = "transformers", marker = "extra == 'infer'", specifier = ">=4.45" },
     { name = "transformers", marker = "extra == 'merge'" },
     { name = "websockets", specifier = ">=13" },
 ]
-provides-extras = ["mlx", "hf", "merge"]
+provides-extras = ["mlx", "hf", "merge", "infer"]
 
 [[package]]
 name = "cuda-bindings"

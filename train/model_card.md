@@ -2,89 +2,129 @@
 license: apache-2.0
 base_model: Tongyi-MAI/Z-Image-Turbo
 tags:
-  - lora
   - text-to-image
-  - z-image
+  - diffusers
   - meme
   - memecoin
   - pump.fun
+  - cookr
 pipeline_tag: text-to-image
 library_name: diffusers
-instance_prompt: cookr
 widget:
+  - text: "cookr, memecoin logo of Pepe Astronaut (PEPENAUT), pepe the frog in a spacesuit on the moon, green and black"
+    output:
+      url: samples/sample_1.jpg
   - text: "cookr, memecoin logo of Bonk Dog (BONK), cartoon shiba inu wearing sunglasses, orange and yellow, bold outline"
     output:
       url: samples/sample_0.jpg
 ---
 
-# COOKR v1 (light)
+<p align="center"><img src="samples/grid.jpg" alt="COOKR v1 light outputs" width="100%"></p>
 
-Open meme image model. A LoRA for [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo)
-trained on the memes that moved markets: pump.fun coin art that actually traded,
-plus the internet templates it grew out of.
+# COOKR v1 light
 
-**This is the light model.** A few thousand curated images, a LoRA on an open
-base, trained in an afternoon. It exists so anyone can run COOKR locally today.
-The full COOKR model is a separate thing: trained end to end on millions of
-memes and memecoin images, served first through [cookr.pro](https://cookr.pro),
-and open-sourced after that. Treat v1-light as the preview of the style, not the
-ceiling.
+**Cook a meme. Launch a token.**
+COOKR is the meme image model behind [cookr.pro](https://cookr.pro): an AI
+platform that turns an idea into a memecoin character and keeps it alive
+after launch. This is the **light** release, a full standalone checkpoint you
+can run on one GPU today. The full COOKR model, trained on millions of memes
+and memecoin images, is served on cookr.pro.
 
-[cookr.pro](https://cookr.pro) · [GitHub](https://github.com/CookrAI/cookr) · hi@cookr.pro
+- Trained on the memes that moved markets: pump.fun coin art that actually traded, plus the internet templates it grew out of
+- Native prompt grammar for coins: character, ticker, format, vibe
+- 9 steps, 1024px, no CFG. A meme in about a second on an L40S
 
-## Use
+[cookr.pro](https://cookr.pro) · [GitHub](https://github.com/CookrAI/cookr) · [X @CookrPro](https://x.com/CookrPro) · hi@cookr.pro
 
-Trigger word: `cookr`. Coin name and ticker are in every training caption, so
-"memecoin logo of X (TICK)" is the native prompt shape.
+## Quickstart
+
+```bash
+pip install "cookr[infer] @ git+https://github.com/CookrAI/cookr"
+```
+
+```python
+from cookr import Cookr
+
+c = Cookr()                                                  # loads CookrAI/cookr-v1-light
+c.cook("a frog chef who trades charts", ticker="RIBBIT").save("ribbit.png")
+logo, sticker, meme, alt = c.directions("a pigeon who owns wall street", ticker="PIGEON")
+```
+
+Plain diffusers works too:
 
 ```python
 import torch
-from diffusers import DiffusionPipeline
+from diffusers import ZImagePipeline
 
-pipe = DiffusionPipeline.from_pretrained("Tongyi-MAI/Z-Image-Turbo", torch_dtype=torch.bfloat16).to("cuda")
-pipe.load_lora_weights("CookrAI/cookr-v1")
-
-img = pipe(
-    "cookr, memecoin logo of Pepe Astronaut (PEPENAUT), pepe the frog in a spacesuit on the moon, green and black",
-    num_inference_steps=9, guidance_scale=1.0, height=1024, width=1024,
-).images[0]
-img.save("pepenaut.png")
+pipe = ZImagePipeline.from_pretrained("CookrAI/cookr-v1-light", torch_dtype=torch.bfloat16).to("cuda")
+img = pipe("cookr, memecoin logo of Pepe Astronaut (PEPENAUT), pepe the frog in a spacesuit on the moon, green and black",
+           num_inference_steps=9, guidance_scale=1.0, height=1024, width=1024).images[0]
 ```
 
-Works in ComfyUI and any Z-Image-Turbo LoRA loader. Sample at 8-9 steps, CFG 1.
-LoRA weight 0.8-1.0.
+ComfyUI: load `cookr-v1-light-transformer.safetensors` as the Z-Image-Turbo
+diffusion model in any Z-Image workflow. Text encoder and VAE are unchanged.
 
-Prompt shapes that work:
+## Prompt grammar
 
-- `cookr, memecoin logo of <name> (<TICKER>), <what it is>, <style>, <colors>`
-- `cookr, <meme template name> meme template, <scene>`
+The model was trained on captions of one shape, and it answers best to that shape:
+
+```
+cookr, <format> of <character> (<TICKER>), <details>, <style>, <colors>
+```
+
+| slot | values |
+|---|---|
+| format | `memecoin logo`, `die-cut sticker`, `meme template` |
+| character | who it is, one clause: "a pigeon who owns wall street" |
+| ticker | the symbol in parentheses, uppercase |
+| style | `cartoon`, `pixel art`, `3d render`, `mspaint style`, `photo` |
+
+Examples that work:
+
+- `cookr, memecoin logo of Bonk Dog (BONK), cartoon shiba inu wearing sunglasses, orange and yellow, bold outline`
+- `cookr, die-cut sticker of Chef Ribbit (RIBBIT), frog in a chef hat burning a steak, flat colors`
 - `cookr, wojak crying in front of a red candle chart, mspaint style`
+- `cookr, meme template, distracted boyfriend, three people on a street, photo`
+
+Keep `cookr` as the first token. Weight lives in the checkpoint, no LoRA loader needed.
+
+## What is in the repo
+
+| file | what |
+|---|---|
+| `transformer/` `text_encoder/` `vae/` `tokenizer/` `scheduler/` `model_index.json` | full diffusers model, load with `ZImagePipeline` |
+| `cookr-v1-light-transformer.safetensors` | single-file transformer for ComfyUI |
+| `cookr-v1-light-lora.safetensors` | the LoRA on its own, if you want to stack it |
+| `samples/` | outputs at 500-step intervals during training, no cherry-picking |
+| `train_config.yaml` | the exact ai-toolkit config |
 
 ## Training
 
 | | |
 |---|---|
-| base | Z-Image-Turbo, trained through ai-toolkit's `zimage:turbo` de-distill adapter |
+| base | Z-Image-Turbo (Apache-2.0), trained through ai-toolkit's `zimage:turbo` de-distill adapter, then merged |
 | data | 5.3k pump.fun coin logos (graduated / traded coins first, phash-deduped) + 98 meme templates repeated 8x |
-| captions | Qwen2.5-VL, coin name + ticker prepended, `cookr` trigger |
-| network | LoRA rank 96, alpha 96 |
+| captions | Qwen2.5-VL, coin name + ticker prepended |
+| network | LoRA rank 96, alpha 96, merged at scale 1.0 |
 | schedule | 5000 steps, batch 2, lr 1e-4, adamw8bit, bf16, EMA 0.99 |
 | resolutions | 512 / 768 / 1024 buckets |
-| hardware | 1x L40S, about 1.5 h |
+| hardware | 1x L40S, 2.5 h |
 
-Full pipeline, collectors and this config: [github.com/CookrAI/cookr](https://github.com/CookrAI/cookr).
-Collectors: [pumpfun-collector](https://github.com/CookrAI/pumpfun-collector),
-[meme-collector](https://github.com/CookrAI/meme-collector),
-[x-collector](https://github.com/CookrAI/x-collector).
+Data pipeline, collectors and this config are public:
+[cookr](https://github.com/CookrAI/cookr) ·
+[pumpfun-collector](https://github.com/CookrAI/pumpfun-collector) ·
+[meme-collector](https://github.com/CookrAI/meme-collector) ·
+[x-collector](https://github.com/CookrAI/x-collector)
 
-## Data notes
+## Light vs full
 
-pump.fun's API pages about 1000 deep per sort, so the sweep unions every sort
-for graduated and for all coins. Anything under 256px was dropped, never
-upscaled. "Strategic reserve" / "dividend fund" / AI-agent branding was
-filtered out by name and by caption: this is a meme model, not a logo generator.
+| | light (this) | full |
+|---|---|---|
+| data | ~6k curated images | millions of memes and memecoin images |
+| training | LoRA merged into an open base | end to end |
+| where | here, run it yourself | [cookr.pro](https://cookr.pro) and the Cookr API |
 
 ## License
 
-Apache-2.0, same as the base. The training images remain the property of
+Apache-2.0, same as the base model. Training images remain the property of
 whoever made them.
