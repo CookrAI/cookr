@@ -2,7 +2,10 @@
 # ~3x faster than Qwen-Image per step. Use this for the iteration loop
 # (captions, dataset mix, lr), then re-run the winner on Qwen-Image.
 #
-# arch "zimage" = ai-toolkit extensions_built_in/diffusion_models/z_image (verified 2026-09-28).
+# Turbo is step-distilled: training a LoRA straight on it wrecks few-step sampling
+# (samples go to mush by step 500, verified the hard way). ai-toolkit's
+# "zimage:turbo" arch merges a de-distill training adapter during training and
+# removes it at inference, so the LoRA works on plain Z-Image-Turbo at 9 steps, cfg 1.
 job: extension
 config:
   name: "cookr_zimage_v1"
@@ -43,8 +46,9 @@ config:
           ema_decay: 0.99
       model:
         name_or_path: "Tongyi-MAI/Z-Image-Turbo"
-        arch: "zimage"
+        arch: "zimage:turbo"
         quantize: false
+        assistant_lora_path: "ostris/zimage_turbo_training_adapter/zimage_turbo_training_adapter_v2.safetensors"
       sample:
         sampler: "flowmatch"
         sample_every: 500
@@ -53,7 +57,7 @@ config:
         seed: 42
         walk_seed: true
         guidance_scale: 1
-        sample_steps: 8
+        sample_steps: 9
         neg: ""
         prompts:
           - "cookr, memecoin logo of Bonk Dog (BONK), cartoon shiba inu wearing sunglasses, orange and yellow, bold outline"
