@@ -1,0 +1,23 @@
+[project]
+name = "cookr"
+version = "0.1.0"
+description = "COOKR: open meme image model. Data pipeline for pump.fun memecoins + internet memes."
+requires-python = ">=3.11"
+dependencies = [
+  "httpx[http2]>=0.27",
+  "websockets>=13",
+  "pillow>=10",
+  "imagehash>=4.3",
+  "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+# captioning on Apple Silicon (fast, local)
+mlx = ["mlx-vlm>=0.1.20"]
+# captioning on CUDA / CPU (Florence-2)
+hf = ["torch", "transformers>=4.45", "einops", "timm"]
+# LoRA merge
+merge = ["torch", "diffusers>=0.32", "transformers", "safetensors", "peft"]
+
+[tool.setuptools]
+packages = ["cookr"]

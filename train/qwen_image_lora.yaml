@@ -1,0 +1,69 @@
+# ai-toolkit (ostris) config. Qwen-Image 20B, Apache-2.0.
+# Quantized + low_vram fits a single 24 GB card (4090) at 1024px; ~2-3 it/s
+# on H100, ~0.5 it/s on 4090. Rank 128 so it can absorb a real dataset, then
+# merge into the base with train/merge_lora.py to ship a standalone checkpoint.
+#
+#   cd ai-toolkit && python run.py /workspace/cookr/train/qwen_image_lora.yaml
+job: extension
+config:
+  name: "cookr_qwen_v1"
+  process:
+    - type: "sd_trainer"
+      training_folder: "/workspace/output"
+      device: cuda:0
+      trigger_word: "cookr"
+      network:
+        type: "lora"
+        linear: 128
+        linear_alpha: 128
+      save:
+        dtype: bf16
+        save_every: 500
+        max_step_saves_to_keep: 4
+      datasets:
+        - folder_path: "/workspace/cookr/data/train"
+          caption_ext: "txt"
+          caption_dropout_rate: 0.05
+          shuffle_tokens: false
+          cache_latents_to_disk: true
+          resolution: [512, 768, 1024]
+      train:
+        batch_size: 1
+        steps: 6000
+        gradient_accumulation: 1
+        train_unet: true
+        train_text_encoder: false
+        gradient_checkpointing: true
+        noise_scheduler: "flowmatch"
+        timestep_type: "weighted"
+        optimizer: "adamw8bit"
+        lr: 1.0e-4
+        dtype: bf16
+        ema_config:
+          use_ema: true
+          ema_decay: 0.99
+      model:
+        name_or_path: "Qwen/Qwen-Image"
+        arch: "qwen_image"
+        quantize: true
+        quantize_te: true
+        low_vram: true
+      sample:
+        sampler: "flowmatch"
+        sample_every: 500
+        width: 1024
+        height: 1024
+        seed: 42
+        walk_seed: true
+        guidance_scale: 4
+        sample_steps: 25
+        neg: ""
+        prompts:
+          - "cookr, memecoin logo of Bonk Dog (BONK), cartoon shiba inu wearing sunglasses, orange and yellow, bold outline"
+          - "cookr, memecoin logo of Pepe Astronaut (PEPENAUT), pepe the frog in a spacesuit on the moon, green and black"
+          - "cookr, Distracted Boyfriend meme template, three people on a street, photo style"
+          - "cookr, memecoin logo of Retardio Cousins (RETARDIO), lo-fi pixel art character, purple background"
+          - "cookr, wojak crying in front of a red candle chart, mspaint style"
+meta:
+  name: "[name]"
+  version: "1.0"
