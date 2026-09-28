@@ -1,0 +1,69 @@
+# Cheaper first pass: Z-Image (6B, Apache-2.0). Unquantized bf16 fits 24 GB.
+# ~3x faster than Qwen-Image per step. Use this for the iteration loop
+# (captions, dataset mix, lr), then re-run the winner on Qwen-Image.
+#
+# Turbo is step-distilled: training a LoRA straight on it wrecks few-step sampling
+# (samples go to mush by step 500, verified the hard way). ai-toolkit's
+# "zimage:turbo" arch merges a de-distill training adapter during training and
+# removes it at inference, so the LoRA works on plain Z-Image-Turbo at 9 steps, cfg 1.
+job: extension
+config:
+  name: "cookr_zimage_v1_1"
+  process:
+    - type: "sd_trainer"
+      training_folder: "/workspace/output"
+      device: cuda:0
+      trigger_word: "cookr"
+      network:
+        type: "lora"
+        linear: 96
+        linear_alpha: 96
+      save:
+        dtype: bf16
+        save_every: 500
+        max_step_saves_to_keep: 4
+      datasets:
+        - folder_path: "/workspace/cookr/data/train"
+          caption_ext: "txt"
+          caption_dropout_rate: 0.05
+          cache_latents_to_disk: true
+          resolution: [512, 768, 1024]
+      train:
+        batch_size: 2
+        cache_text_embeddings: true
+        steps: 6000  # v1.1: 10k images (coins + 4.9k KYM template photos), ~1.2 epochs at batch 2
+        gradient_accumulation: 1
+        train_unet: true
+        train_text_encoder: false
+        gradient_checkpointing: true
+        noise_scheduler: "flowmatch"
+        timestep_type: "weighted"
+        optimizer: "adamw8bit"
+        lr: 1.0e-4
+        dtype: bf16
+        ema_config:
+          use_ema: true
+          ema_decay: 0.99
+      model:
+        name_or_path: "Tongyi-MAI/Z-Image-Turbo"
+        arch: "zimage:turbo"
+        quantize: false
+        assistant_lora_path: "ostris/zimage_turbo_training_adapter/zimage_turbo_training_adapter_v2.safetensors"
+      sample:
+        sampler: "flowmatch"
+        sample_every: 500
+        width: 1024
+        height: 1024
+        seed: 42
+        walk_seed: true
+        guidance_scale: 1
+        sample_steps: 9
+        neg: ""
+        prompts:
+          - "cookr, memecoin logo of Bonk Dog (BONK), cartoon shiba inu wearing sunglasses, orange and yellow, bold outline"
+          - "cookr, memecoin logo of Pepe Astronaut (PEPENAUT), pepe the frog in a spacesuit on the moon, green and black"
+          - "cookr, Distracted Boyfriend meme template, three people on a street, photo style"
+          - "cookr, wojak crying in front of a red candle chart, mspaint style"
+meta:
+  name: "[name]"
+  version: "1.0"
