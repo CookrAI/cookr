@@ -6,7 +6,7 @@
 #   cd ai-toolkit && python run.py /workspace/cookr/train/qwen_image_lora.yaml
 job: extension
 config:
-  name: "cookr_qwen_v1"
+  name: "cookr_qwen_v1_light"
   process:
     - type: "sd_trainer"
       training_folder: "/workspace/output"
@@ -30,7 +30,7 @@ config:
       train:
         batch_size: 1
         cache_text_embeddings: true
-        steps: 6000
+        steps: 3500  # 20B is ~3x slower per step than Z-Image; 3500 fits one night on an L40S
         gradient_accumulation: 1
         train_unet: true
         train_text_encoder: false
