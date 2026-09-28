@@ -17,11 +17,18 @@ widget:
       url: samples/sample_0.jpg
 ---
 
-# COOKR v1
+# COOKR v1 (light)
 
 Open meme image model. A LoRA for [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo)
 trained on the memes that moved markets: pump.fun coin art that actually traded,
 plus the internet templates it grew out of.
+
+**This is the light model.** A few thousand curated images, a LoRA on an open
+base, trained in an afternoon. It exists so anyone can run COOKR locally today.
+The full COOKR model is a separate thing: trained end to end on millions of
+memes and memecoin images, served first through [cookr.pro](https://cookr.pro),
+and open-sourced after that. Treat v1-light as the preview of the style, not the
+ceiling.
 
 [cookr.pro](https://cookr.pro) · [GitHub](https://github.com/CookrAI/cookr) · hi@cookr.pro
 

@@ -5,10 +5,19 @@ coin art that actually traded, plus the internet templates it grew out of.
 
 **Site** [cookr.pro](https://cookr.pro) · **Contact** hi@cookr.pro · **Weights** on Hugging Face after v1
 
+## Two models
+
+| | light (this repo, open now) | full (in progress) |
+|---|---|---|
+| what | LoRA on an open base (Z-Image-Turbo) | end-to-end trained COOKR model |
+| data | ~6k curated images | millions of memes and memecoin images |
+| where | Hugging Face, run it locally | served on [cookr.pro](https://cookr.pro) first, open-sourced later |
+| purpose | run COOKR today, preview the style | the actual model |
+
 ## Status
 
-v1 is a LoRA on an Apache-2.0 base (Qwen-Image / Z-Image), merged into a
-standalone checkpoint. Dataset collected, captioned, first training run next.
+v1-light: dataset collected and captioned, LoRA trained on Z-Image-Turbo,
+published on Hugging Face as `CookrAI/cookr-v1`.
 
 | stage | state |
 |---|---|
