@@ -12,7 +12,7 @@ import shutil
 
 from .db import ROOT, TRAIN, connect
 
-REPEAT_MEMES = 8
+REPEAT_MEMES_MAX = 8  # templates are repeated so they hold ~40% of the set, never more than 8x
 # COOKR is a meme model. pump.fun's top of the mcap table is full of fake
 # "strategic reserve" / "dividend fund" / AI-agent branding; those are logos,
 # not memes. Drop by name/ticker/description. Tune as the dataset grows.
@@ -38,6 +38,9 @@ def main():
            WHERE i.status='ok'"""
     ).fetchall()
     n_coin = n_meme = n_skip = 0
+    n_m = sum(1 for r in rows if r["key"].startswith("meme:"))
+    n_c = max(1, len(rows) - n_m)
+    repeat = max(1, min(REPEAT_MEMES_MAX, round(0.66 * n_c / max(1, n_m))))
     for r in rows:
         if r["key"].startswith("pump:") and (
             NOT_MEME.search(" ".join(filter(None, (r["name"], r["symbol"], r["description"]))))
@@ -47,7 +50,7 @@ def main():
             continue
         src = ROOT / r["path"]
         base = r["key"].replace(":", "_")
-        reps = REPEAT_MEMES if r["key"].startswith("meme:") else 1
+        reps = repeat if r["key"].startswith("meme:") else 1
         for k in range(reps):
             name = base if k == 0 else f"{base}__r{k}"
             os.symlink(src.resolve(), TRAIN / f"{name}.jpg")
@@ -56,7 +59,7 @@ def main():
             n_meme += 1
         else:
             n_coin += 1
-    print(f"exported {n_coin} coin images + {n_meme} meme templates x{REPEAT_MEMES} -> {TRAIN}  (skipped {n_skip} non-meme coins)")
+    print(f"exported {n_coin} coin images + {n_meme} meme templates x{repeat} -> {TRAIN}  (skipped {n_skip} non-meme coins)")
     print("sample captions:")
     for t in sorted(TRAIN.glob("pump_*.txt"))[:3]:
         print("  ", t.read_text())
