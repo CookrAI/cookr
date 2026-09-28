@@ -2,6 +2,8 @@
 name = "cookr"
 version = "0.1.0"
 description = "COOKR: open meme image model. Data pipeline for pump.fun memecoins + internet memes."
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
   "httpx[http2]>=0.27",
@@ -10,6 +12,10 @@ dependencies = [
   "imagehash>=4.3",
   "tqdm>=4.66",
 ]
+
+[project.urls]
+Homepage = "https://cookr.pro"
+Repository = "https://github.com/CookrAI/cookr"
 
 [project.optional-dependencies]
 # captioning on Apple Silicon (fast, local)
