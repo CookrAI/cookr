@@ -9,6 +9,7 @@ usage: uv run python -m cookr.stream_pumpfun   (Ctrl-C to stop, safe to resume)
 import asyncio
 import json
 import signal
+import sqlite3
 
 import websockets
 
@@ -36,15 +37,25 @@ async def run():
                         continue
                     if "mint" not in m or not m.get("uri"):
                         continue
-                    upsert_coin(db, {
+                    coin = {
                         "mint": m["mint"], "name": (m.get("name") or "").strip(),
                         "symbol": (m.get("symbol") or "").strip(),
                         "metadata_uri": m["uri"], "created_ts": None,
-                    }, "stream")
-                    db.commit()  # per row: never hold the write lock, download.py shares this db
+                    }
+                    # download.py writes to the same db; on lock, back off and retry
+                    for attempt in range(20):
+                        try:
+                            upsert_coin(db, coin, "stream")
+                            db.commit()
+                            break
+                        except sqlite3.OperationalError as e:
+                            db.rollback()
+                            await asyncio.sleep(0.5 * (attempt + 1))
+                    else:
+                        print("dropped (db busy):", coin["mint"], flush=True)
                     n += 1
                     if n % 50 == 0:
-                        total = db.execute("SELECT COUNT(*) FROM coins").fetchone()[0]
+                        total = db.execute("SELECT COUNT(*) FROM coins").fetchall()[0][0]
                         print(f"+{n} this session, {total} coins in db", flush=True)
         except (websockets.WebSocketException, OSError) as e:
             print("ws error, reconnecting:", e)
