@@ -10,16 +10,7 @@ tags:
   - cookr
 pipeline_tag: text-to-image
 library_name: diffusers
-widget:
-  - text: "cookr, memecoin logo of Pepe Astronaut (PEPENAUT), pepe the frog in a spacesuit on the moon, green and black"
-    output:
-      url: samples/sample_1.jpg
-  - text: "cookr, memecoin logo of Bonk Dog (BONK), cartoon shiba inu wearing sunglasses, orange and yellow, bold outline"
-    output:
-      url: samples/sample_0.jpg
 ---
-
-<p align="center"><img src="samples/grid.jpg" alt="COOKR v1 light outputs" width="100%"></p>
 
 # COOKR v1 light
 
@@ -95,7 +86,6 @@ Keep `cookr` as the first token. Weight lives in the checkpoint, no LoRA loader 
 | `transformer/` `text_encoder/` `vae/` `tokenizer/` `scheduler/` `model_index.json` | full diffusers model, load with `ZImagePipeline` |
 | `cookr-v1-light-transformer.safetensors` | single-file transformer for ComfyUI |
 | `cookr-v1-light-lora.safetensors` | the LoRA on its own, if you want to stack it |
-| `samples/` | outputs at 500-step intervals during training, no cherry-picking |
 | `train_config.yaml` | the exact ai-toolkit config |
 
 ## Training

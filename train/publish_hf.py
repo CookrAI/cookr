@@ -47,6 +47,7 @@ def main():
     ap.add_argument("--config", required=True)
     ap.add_argument("--card", required=True, help="README.md for the model card")
     ap.add_argument("--max-samples", type=int, default=24)
+    ap.add_argument("--samples", action="store_true", help="also upload training samples (off by default)")
     ap.add_argument("--private", action="store_true")
     a = ap.parse_args()
     run = pathlib.Path(a.run)
@@ -61,16 +62,17 @@ def main():
     shutil.copy(finals[-1], merged / f"{name}-lora.safetensors")
     shutil.copy(a.config, merged / "train_config.yaml")
     shutil.copy(a.card, merged / "README.md")
-    samples = sorted((run / "samples").glob("*.jpg"))
     sdir = merged / "samples"
     if sdir.exists():
         shutil.rmtree(sdir)
-    sdir.mkdir()
-    for p in samples[-a.max_samples:]:
-        shutil.copy(p, sdir / p.name)
-    for i, p in enumerate(samples[-4:]):  # model card widget targets
-        shutil.copy(p, sdir / f"sample_{i}.jpg")
-    grid(samples[-4:], sdir / "grid.jpg")
+    if a.samples:
+        samples = sorted((run / "samples").glob("*.jpg"))
+        sdir.mkdir()
+        for p in samples[-a.max_samples:]:
+            shutil.copy(p, sdir / p.name)
+        for i, p in enumerate(samples[-4:]):
+            shutil.copy(p, sdir / f"sample_{i}.jpg")
+        grid(samples[-4:], sdir / "grid.jpg")
     api.upload_folder(repo_id=a.repo, folder_path=str(merged), commit_message="COOKR v1 light",
                       ignore_patterns=["*.tmp", "__pycache__"])
     print("published https://huggingface.co/" + a.repo)
