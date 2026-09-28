@@ -25,6 +25,7 @@ ap.add_argument("--base", default="Tongyi-MAI/Z-Image-Turbo")
 ap.add_argument("--lora", required=True)
 ap.add_argument("--out", required=True)
 ap.add_argument("--scale", type=float, default=1.0)
+ap.add_argument("--no-single", action="store_true", help="skip the 12 GB single-file transformer (disk-tight boxes)")
 a = ap.parse_args()
 
 out = pathlib.Path(a.out)
@@ -71,6 +72,9 @@ mi = base_dir / "model_index.json"
 if mi.exists():
     shutil.copy(mi, out / "model_index.json")
 # single-file transformer for ComfyUI-style loaders
+if a.no_single:
+    print("wrote", out, "(no single file)")
+    raise SystemExit(0)
 sd = {k: v.contiguous() for k, v in tf.state_dict().items()}
 save_file(sd, str(out / "cookr-v1-light-transformer.safetensors"), metadata={"format": "pt", "model": "COOKR v1 light", "base": a.base})
 print("wrote", out)
