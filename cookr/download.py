@@ -22,7 +22,7 @@ from PIL import Image, ImageOps, ImageStat, UnidentifiedImageError
 
 from .db import RAW, connect, now
 
-IPFS_GATEWAYS = ["https://pump.mypinata.cloud/ipfs/", "https://ipfs.io/ipfs/", "https://cloudflare-ipfs.com/ipfs/"]
+IPFS_GATEWAYS = ["https://pump.mypinata.cloud/ipfs/", "https://gateway.pinata.cloud/ipfs/", "https://ipfs.io/ipfs/"]  # ipfs.io rate-limits hard, keep it last
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh) cookr-dataset/0.1"}
 MAX_SIDE = 1024
 MIN_SIDE = 256
@@ -39,11 +39,13 @@ def candidates(url: str) -> list[str]:
     return [url]
 
 
-async def fetch_bytes(client: httpx.AsyncClient, url: str) -> bytes | None:
+async def fetch_bytes(client: httpx.AsyncClient, url: str, min_len: int = 500) -> bytes | None:
+    """min_len guards against gateway error pages served as 200. Metadata JSON
+    is often < 500 bytes, so callers fetching JSON pass a lower floor."""
     for u in candidates(url):
         try:
             r = await client.get(u, timeout=25, follow_redirects=True)
-            if r.status_code == 200 and len(r.content) > 500:
+            if r.status_code == 200 and len(r.content) >= min_len:
                 return r.content
         except httpx.HTTPError:
             continue
@@ -51,7 +53,7 @@ async def fetch_bytes(client: httpx.AsyncClient, url: str) -> bytes | None:
 
 
 async def resolve_image_uri(client: httpx.AsyncClient, metadata_uri: str) -> tuple[str | None, str | None]:
-    raw = await fetch_bytes(client, metadata_uri)
+    raw = await fetch_bytes(client, metadata_uri, min_len=20)
     if not raw:
         return None, None
     try:
@@ -87,6 +89,29 @@ def normalise(raw: bytes) -> tuple[Image.Image, str] | tuple[None, str]:
     return im, "ok"
 
 
+PER_IMAGE_BUDGET = 60  # seconds, all gateways included; slow hosts must not stall the run
+
+
+async def process(key: str, kind: str, url: str | None, meta_uri: str | None, client: httpx.AsyncClient):
+    desc = None
+    if not url and meta_uri:
+        url, desc = await resolve_image_uri(client, meta_uri)
+    status, path, w, h, ph = "failed", None, None, None, None
+    if url:
+        raw = await fetch_bytes(client, url)
+        if raw:
+            im, status = normalise(raw)
+            if im is not None:
+                sub = RAW / kind
+                sub.mkdir(parents=True, exist_ok=True)
+                path = sub / f"{key.split(':', 1)[1]}.jpg"
+                im.save(path, "JPEG", quality=92)
+                w, h = im.size
+                ph = str(imagehash.phash(im))
+                path = str(path.relative_to(RAW.parent.parent))
+    return key, url, desc, status, path, w, h, ph
+
+
 async def worker(name: str, q: asyncio.Queue, client: httpx.AsyncClient, results: asyncio.Queue):
     while True:
         item = await q.get()
@@ -94,23 +119,14 @@ async def worker(name: str, q: asyncio.Queue, client: httpx.AsyncClient, results
             q.task_done()
             return
         key, kind, url, meta_uri = item
-        desc = None
-        if not url and meta_uri:
-            url, desc = await resolve_image_uri(client, meta_uri)
-        status, path, w, h, ph = "failed", None, None, None, None
-        if url:
-            raw = await fetch_bytes(client, url)
-            if raw:
-                im, status = normalise(raw)
-                if im is not None:
-                    sub = RAW / kind
-                    sub.mkdir(parents=True, exist_ok=True)
-                    path = sub / f"{key.split(':', 1)[1]}.jpg"
-                    im.save(path, "JPEG", quality=92)
-                    w, h = im.size
-                    ph = str(imagehash.phash(im))
-                    path = str(path.relative_to(RAW.parent.parent))
-        await results.put((key, url, desc, status, path, w, h, ph))
+        try:
+            res = await asyncio.wait_for(process(key, kind, url, meta_uri, client), PER_IMAGE_BUDGET)
+        except asyncio.TimeoutError:
+            res = (key, url, None, "failed", None, None, None, None)
+        except Exception as e:  # never let one image kill the run or starve the main loop
+            print("worker error", key, repr(e), file=sys.stderr, flush=True)
+            res = (key, url, None, "bad", None, None, None, None)
+        await results.put(res)
         q.task_done()
 
 
@@ -140,7 +156,11 @@ async def run(limit: int, concurrency: int):
         workers = [asyncio.create_task(worker(f"w{i}", q, client, results)) for i in range(concurrency)]
         counts: dict[str, int] = {}
         for i in range(len(todo)):
-            key, url, desc, status, path, w, h, ph = await results.get()
+            try:
+                key, url, desc, status, path, w, h, ph = await asyncio.wait_for(results.get(), PER_IMAGE_BUDGET * 2)
+            except asyncio.TimeoutError:
+                print("no results for a while, stopping; re-run to resume", flush=True)
+                break
             counts[status] = counts.get(status, 0) + 1
             db.execute(
                 "INSERT OR REPLACE INTO images(key,path,width,height,phash,status,ts) VALUES(?,?,?,?,?,?,?)",
@@ -151,13 +171,13 @@ async def run(limit: int, concurrency: int):
                     "UPDATE coins SET image_uri=COALESCE(image_uri,?), description=COALESCE(NULLIF(description,''),?) WHERE mint=?",
                     (url, desc, key[5:]),
                 )
+            if (i + 1) % 25 == 0:
+                db.commit()  # short transactions: stream_pumpfun.py shares this db
             if (i + 1) % 100 == 0:
-                db.commit()
                 print(f"{i + 1}/{len(todo)} {counts}", flush=True)
         db.commit()
-        for _ in workers:
-            q.put_nowait(None)
-        await asyncio.gather(*workers)
+        for w_ in workers:
+            w_.cancel()
     print("done", counts)
 
 

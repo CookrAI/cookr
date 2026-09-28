@@ -29,7 +29,7 @@ async def run():
         try:
             async with websockets.connect(WS, ping_interval=20) as ws:
                 await ws.send(json.dumps({"method": "subscribeNewToken"}))
-                print("subscribed")
+                print("subscribed", flush=True)
                 while not stop.is_set():
                     try:
                         m = json.loads(await asyncio.wait_for(ws.recv(), timeout=30))
