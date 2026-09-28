@@ -52,6 +52,9 @@ def main():
         (stage / "samples").mkdir()
         for p in samples[-a.max_samples:]:
             shutil.copy(p, stage / "samples" / p.name)
+        # the model card widget points at samples/sample_N.jpg: the final-step set
+        for i, p in enumerate(samples[-4:]):
+            shutil.copy(p, stage / "samples" / f"sample_{i}.jpg")
         api.upload_folder(repo_id=a.repo, folder_path=str(stage), commit_message="cookr v1 lora")
     print("published https://huggingface.co/" + a.repo)
 
