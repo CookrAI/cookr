@@ -37,7 +37,7 @@ CREATE INDEX IF NOT EXISTS images_status ON images(status);
 
 def connect() -> sqlite3.Connection:
     DATA.mkdir(exist_ok=True)
-    c = sqlite3.connect(DB, timeout=30)
+    c = sqlite3.connect(DB, timeout=120)
     c.row_factory = sqlite3.Row
     c.executescript(SCHEMA)
     c.execute("PRAGMA journal_mode=WAL")

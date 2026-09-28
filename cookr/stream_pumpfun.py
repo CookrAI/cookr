@@ -41,9 +41,9 @@ async def run():
                         "symbol": (m.get("symbol") or "").strip(),
                         "metadata_uri": m["uri"], "created_ts": None,
                     }, "stream")
+                    db.commit()  # per row: never hold the write lock, download.py shares this db
                     n += 1
                     if n % 50 == 0:
-                        db.commit()
                         total = db.execute("SELECT COUNT(*) FROM coins").fetchone()[0]
                         print(f"+{n} this session, {total} coins in db", flush=True)
         except (websockets.WebSocketException, OSError) as e:
